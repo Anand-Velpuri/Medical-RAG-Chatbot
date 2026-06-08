@@ -18,18 +18,18 @@ pipeline {
             }
         }
 
-        stage('Test EC2 SSH') {
-                steps {
-                    sshagent(credentials: ['ec2-ssh']) {
-                        sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 "
-                            hostname
-                            whoami
-                        "
-                        '''
-                    }
-                }
-        }
+        // stage('Test EC2 SSH') {
+        //         steps {
+        //             sshagent(credentials: ['ec2-ssh']) {
+        //                 sh '''
+        //                 ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 "
+        //                     hostname
+        //                     whoami
+        //                 "
+        //                 '''
+        //             }
+        //         }
+        // }
 
         stage('Build, Scan, and Push Docker Image to ECR') {
             steps {
@@ -48,6 +48,44 @@ pipeline {
                         """
 
                         archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
+                    sshagent(credentials: ['ec2-ssh']) {
+                        script {
+                            def accountId = sh(
+                                script: "aws sts get-caller-identity --query Account --output text",
+                                returnStdout: true
+                            ).trim()
+
+                            sh """
+                            ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 '
+
+                            export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+                            export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+                            export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+                            docker pull ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+
+                            docker stop medical-rag || true
+                            docker rm medical-rag || true
+
+                            docker run -d \
+                                --name medical-rag \
+                                --restart always \
+                                -p 5001:5001 \
+                                ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+                            '
+                            """
+                        }
                     }
                 }
             }
