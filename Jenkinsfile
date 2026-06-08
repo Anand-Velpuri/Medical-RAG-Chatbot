@@ -56,6 +56,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token'],
                     file(credentialsId: 'medical-rag-env', variable: 'ENV_FILE')
                 ]) {
                     sshagent(credentials: ['ec2-ssh']) {
@@ -66,9 +67,15 @@ pipeline {
                             ).trim()
 
                             sh """
+                            # Copy .env file to EC2
                             scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@13.233.154.91:~/.env
 
+                            # Deploy latest image
                             ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 '
+                                export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+                                export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+                                export AWS_DEFAULT_REGION=${AWS_REGION}
+
                                 aws ecr get-login-password --region ${AWS_REGION} | \
                                 docker login --username AWS --password-stdin ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
