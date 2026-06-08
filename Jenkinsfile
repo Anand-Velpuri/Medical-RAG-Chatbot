@@ -68,7 +68,7 @@ pipeline {
 
                             sh """
                             # Copy .env file to EC2
-                            scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@13.233.154.91:~/.env
+                            scp -o StrictHostKeyChecking=no "\$ENV_FILE" ubuntu@13.233.154.91:~/.env
 
                             # Deploy latest image
                             ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 '
