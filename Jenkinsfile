@@ -18,6 +18,19 @@ pipeline {
             }
         }
 
+        stage('Test EC2 SSH') {
+                steps {
+                    sshagent(credentials: ['ec2-ssh']) {
+                        sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 "
+                            hostname
+                            whoami
+                        "
+                        '''
+                    }
+                }
+        }
+
         stage('Build, Scan, and Push Docker Image to ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
