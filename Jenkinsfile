@@ -55,7 +55,9 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-token']]) {
+                withCredentials([
+                    file(credentialsId: 'medical-rag-env', variable: 'ENV_FILE')
+                ]) {
                     sshagent(credentials: ['ec2-ssh']) {
                         script {
                             def accountId = sh(
@@ -64,25 +66,23 @@ pipeline {
                             ).trim()
 
                             sh """
+                            scp -o StrictHostKeyChecking=no \$ENV_FILE ubuntu@13.233.154.91:~/.env
+
                             ssh -o StrictHostKeyChecking=no ubuntu@13.233.154.91 '
+                                aws ecr get-login-password --region ${AWS_REGION} | \
+                                docker login --username AWS --password-stdin ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
-                            export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-                            export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-                            export AWS_DEFAULT_REGION=${AWS_REGION}
+                                docker pull ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
 
-                            aws ecr get-login-password --region ${AWS_REGION} | \
-                            docker login --username AWS --password-stdin ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                                docker stop medical-rag || true
+                                docker rm medical-rag || true
 
-                            docker pull ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
-
-                            docker stop medical-rag || true
-                            docker rm medical-rag || true
-
-                            docker run -d \
-                                --name medical-rag \
-                                --restart always \
-                                -p 5001:5001 \
-                                ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+                                docker run -d \
+                                    --name medical-rag \
+                                    --restart always \
+                                    -p 5001:5001 \
+                                    --env-file ~/.env \
+                                    ${accountId}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
                             '
                             """
                         }
