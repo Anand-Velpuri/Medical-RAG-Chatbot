@@ -1,3 +1,6 @@
+torch==2.2.2
+transformers==4.46.3
+sentence-transformers==3.3.1
 langchain
 langchain_community
 langchain_huggingface
@@ -6,4 +9,6 @@ pypdf
 huggingface_hub
 flask
 python-dotenv
+langchain-text-splitters
+langchain-ollama
 # -e .

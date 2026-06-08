@@ -1,3 +1,8 @@
 venv/
+.venv/
 .env
 __pycache__/
+logs/
+.vscode/
+MedicalRAGChatbot.egg-info/
+.DS_Store

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 HF_TOKEN = os.getenv("HF_TOKEN")
-HUGGINGFACE_REPO_ID = "mistralai/Mistral-7B-Instruct-v0.3"
+HUGGINGFACE_REPO_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
 DB_FAISS_PATH = "vectorstore/db_faiss"
 DATA_PATH = "./data/"
 CHUNK_SIZE = 500
